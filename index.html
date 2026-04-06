@@ -644,28 +644,48 @@ function setStatus(msg, ok) {
   dot.className = 'status-dot' + (ok===true?' ok': ok===false?' err':'');
 }
 
+function fetchConTimeout(url, ms=6000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, {signal: ctrl.signal, cache:'no-store'})
+    .then(r => { clearTimeout(t); return r; })
+    .catch(e => { clearTimeout(t); throw e; });
+}
+
 async function fetchYahooPrice(symbol) {
   try {
-    const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(symbol)+'?interval=1d&range=1d');
-    if (!r.ok) return null;
-    const d = await r.json();
-    return d?.chart?.result?.[0]?.meta?.regularMarketPrice ?? null;
-  } catch { return null; }
+    const r = await fetchConTimeout('/.netlify/functions/precio?symbol='+encodeURIComponent(symbol));
+    if (r.ok) {
+      const d = await r.json();
+      if (d.price && d.price > 0) return d.price;
+    }
+  } catch {}
+  return null;
 }
 
 async function actualizarPreciosAuto() {
   setStatus('⏳ Obteniendo precios…', null);
   const hoy = new Date().toISOString().slice(0,10);
   let ok=0, fail=0;
+
+  // Recoger todas las posiciones de todas las carteras
+  const tareas = [];
   for (const c of state.carteras) {
     for (const pos of c.posiciones) {
       const sym = state.yahooMap[pos.ticker] || pos.ticker;
-      const precio = await fetchYahooPrice(sym);
-      if (precio && precio > 0) { pos.precioActual = Math.round(precio*100)/100; ok++; }
-      else fail++;
+      tareas.push(
+        fetchYahooPrice(sym).then(precio => {
+          if (precio && precio > 0) { pos.precioActual = Math.round(precio*100)/100; ok++; }
+          else fail++;
+        })
+      );
     }
     c.ultimaActualizacion = hoy;
   }
+
+  // Todas las peticiones en paralelo
+  await Promise.allSettled(tareas);
+
   renderAll();
   if (fail===0) setStatus('✅ Actualizado · '+hoy, true);
   else if (ok>0) setStatus('⚠️ '+ok+' ok, '+fail+' sin datos · '+hoy, null);
