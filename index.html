@@ -67,29 +67,28 @@ body { background:var(--bg); color:var(--text); font-family:var(--font); min-hei
 .tab { background:none; border:none; border-bottom:2px solid transparent; color:var(--muted); font-family:var(--font); font-size:0.6rem; padding:7px 14px 9px; cursor:pointer; white-space:nowrap; margin-bottom:-1px; letter-spacing:0.07em; text-transform:uppercase; }
 .tab.active { color:var(--text); border-color:var(--accent); }
 
-/* ── TABLA POSICIONES ── */
-.tabla-wrap { margin:0 16px; }
-.tabla { width:100%; border-collapse:collapse; font-size:0.65rem; margin-top:12px; table-layout:fixed; }
-.tabla thead th { font-size:0.48rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; padding:0 4px 8px; text-align:right; border-bottom:1px solid var(--border); white-space:nowrap; overflow:hidden; }
-.tabla thead th:first-child { text-align:left; padding-left:0; width:22%; }
-.tabla thead th:nth-child(2) { width:7%; }
-.tabla thead th:nth-child(3) { width:10%; }
-.tabla thead th:nth-child(4) { width:10%; }
-.tabla thead th:nth-child(5) { width:9%; }
-.tabla thead th:nth-child(6) { width:11%; }
-.tabla thead th:nth-child(7) { width:11%; }
-.tabla thead th:nth-child(8) { width:11%; }
-.tabla thead th:nth-child(9) { width:9%; }
-.tabla tbody tr { border-bottom:1px solid var(--border); }
-.tabla tbody tr:last-child { border-bottom:none; }
-.tabla tbody td { padding:8px 4px; text-align:right; vertical-align:middle; overflow:hidden; }
-.tabla tbody td:first-child { text-align:left; padding-left:0; }
-.ticker { font-family:var(--font-num); font-size:0.75rem; font-weight:700; color:var(--text); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.nombre { font-size:0.48rem; color:var(--muted); margin-top:1px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.num { font-family:var(--font-num); font-size:0.72rem; font-weight:700; }
+/* ── POSICIONES CARDS ── */
+.pos-lista { margin:12px 16px 0; display:flex; flex-direction:column; gap:8px; }
+.pos-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 14px; }
+.pos-card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+.pos-card-nombre { font-family:var(--font-num); font-size:0.95rem; font-weight:700; color:var(--text); }
+.pos-card-ticker { font-size:0.58rem; color:var(--muted); margin-top:2px; }
+.pos-card-fila { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.pos-card-fila + .pos-card-fila { margin-top:6px; padding-top:6px; border-top:1px solid var(--border); }
+.pos-campo .lbl { font-size:0.5rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:2px; }
+.pos-campo .val { font-family:var(--font-num); font-size:0.82rem; font-weight:700; color:var(--text); }
+.pos-campo .val.pos { color:var(--green); }
+.pos-campo .val.neg { color:var(--red); }
+.pos-total { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin:8px 16px 0; }
+.pos-total-fila { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.pos-total .lbl { font-size:0.5rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:2px; }
+.pos-total .val { font-family:var(--font-num); font-size:0.9rem; font-weight:700; color:var(--text); }
+.pos-total .val.pos { color:var(--green); }
+.pos-total .val.neg { color:var(--red); }
+.num { font-family:var(--font-num); font-size:0.82rem; font-weight:700; }
 .pos { color:var(--green); }
 .neg { color:var(--red); }
-.pill { display:inline-block; padding:2px 5px; border-radius:20px; font-size:0.55rem; font-weight:500; white-space:nowrap; }
+.pill { display:inline-block; padding:3px 8px; border-radius:20px; font-size:0.65rem; font-weight:500; white-space:nowrap; }
 .pill.pos { background:var(--green-dim); color:var(--green); }
 .pill.neg { background:var(--red-dim); color:var(--red); }
 .tabla tfoot td { padding:10px 4px; border-top:2px solid var(--border); font-family:var(--font-num); font-weight:700; font-size:0.78rem; text-align:right; color:var(--text); }
@@ -181,25 +180,8 @@ input:focus, select:focus { border-color:var(--accent); }
 
 <!-- TAB POSICIONES -->
 <div id="tab-posiciones">
-  <div class="tabla-wrap">
-    <table class="tabla">
-      <thead>
-        <tr>
-          <th>Valor</th>
-          <th>Acc.</th>
-          <th>P.Compra</th>
-          <th>P.Actual</th>
-          <th>Comisión</th>
-          <th>Inversión</th>
-          <th>Valor act.</th>
-          <th>Ben/Pérd</th>
-          <th>%</th>
-        </tr>
-      </thead>
-      <tbody id="tabla-body"></tbody>
-      <tfoot id="tabla-foot"></tfoot>
-    </table>
-  </div>
+  <div class="pos-lista" id="pos-lista"></div>
+  <div class="pos-total" id="pos-total" style="display:none"></div>
 </div>
 
 <!-- TAB RENTABILIDAD -->
@@ -379,47 +361,56 @@ function renderResumen() {
 // ── RENDER POSICIONES ──
 function renderPosiciones() {
   const c = cartera();
-  const tbody = document.getElementById('tabla-body');
-  const tfoot = document.getElementById('tabla-foot');
+  const lista = document.getElementById('pos-lista');
+  const total = document.getElementById('pos-total');
   if (c.posiciones.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted);font-size:0.7rem">Sin posiciones. Pulsa ＋ Operación para añadir.</td></tr>`;
-    tfoot.innerHTML = '';
+    lista.innerHTML = '<div class="empty">Sin posiciones. Pulsa ＋ Operación para añadir.</div>';
+    total.style.display = 'none';
     return;
   }
-  let totInv=0, totAct=0, totCom=0;
-  tbody.innerHTML = c.posiciones.map(p => {
+  let totInv=0, totAct=0;
+  lista.innerHTML = c.posiciones.map(p => {
     const inv = p.acciones * p.precioMedio;
     const act = p.acciones * p.precioActual;
     const ben = act - inv;
     const pct = inv > 0 ? (ben/inv)*100 : 0;
     const com = p.comision || 0;
-    totInv += inv; totAct += act; totCom += com;
+    totInv += inv; totAct += act;
     const pos = ben >= 0;
-    return `<tr>
-      <td><span class="ticker">${p.nombre}</span><span class="nombre">${p.ticker}</span></td>
-      <td><span class="num">${p.acciones}</span></td>
-      <td><span class="num">${f(p.precioMedio)}</span></td>
-      <td><span class="num">${f(p.precioActual)}</span></td>
-      <td><span class="num" style="color:var(--muted)">${com>0?f(com):'—'}</span></td>
-      <td><span class="num">${f(inv)}</span></td>
-      <td><span class="num ${pos?'pos':'neg'}">${f(act)}</span></td>
-      <td><span class="num ${pos?'pos':'neg'}">${fs(ben)}</span></td>
-      <td><span class="pill ${pos?'pos':'neg'}">${fs(pct,1)}%</span></td>
-    </tr>`;
+    return `<div class="pos-card">
+      <div class="pos-card-header">
+        <div>
+          <div class="pos-card-nombre">${p.nombre}</div>
+          <div class="pos-card-ticker">${p.ticker}</div>
+        </div>
+        <span class="pill ${pos?'pos':'neg'}">${fs(pct,1)}%</span>
+      </div>
+      <div class="pos-card-fila">
+        <div class="pos-campo"><div class="lbl">Acciones</div><div class="val">${p.acciones}</div></div>
+        <div class="pos-campo"><div class="lbl">P. Compra</div><div class="val">${f(p.precioMedio)}</div></div>
+        <div class="pos-campo"><div class="lbl">P. Actual</div><div class="val">${f(p.precioActual)}</div></div>
+        <div class="pos-campo"><div class="lbl">Comisión</div><div class="val">${com>0?f(com):'—'}</div></div>
+      </div>
+      <div class="pos-card-fila">
+        <div class="pos-campo"><div class="lbl">Inversión</div><div class="val">${f(inv)}</div></div>
+        <div class="pos-campo"><div class="lbl">Valor act.</div><div class="val ${pos?'pos':'neg'}">${f(act)}</div></div>
+        <div class="pos-campo" style="grid-column:span 2"><div class="lbl">Benef / Pérdida</div><div class="val ${pos?'pos':'neg'}">${fs(ben)} €</div></div>
+      </div>
+    </div>`;
   }).join('');
   const totCoste = totInv + c.comisionesTotales;
   const totBen = totAct - totCoste;
   const totPct = totCoste > 0 ? (totBen/totCoste)*100 : 0;
   const pos = totBen >= 0;
-  tfoot.innerHTML = `<tr>
-    <td>Total</td>
-    <td></td><td></td><td></td>
-    <td><span class="num" style="color:var(--muted)">${f(c.comisionesTotales,0)}</span></td>
-    <td><span style="font-family:var(--font-num);font-size:0.85rem;font-weight:700">${f(totCoste)}</span></td>
-    <td><span style="font-family:var(--font-num);font-size:0.85rem;font-weight:700" class="${pos?'pos':'neg'}">${f(totAct)}</span></td>
-    <td><span style="font-family:var(--font-num);font-size:0.85rem;font-weight:700" class="${pos?'pos':'neg'}">${fs(totBen)}</span></td>
-    <td><span class="pill ${pos?'pos':'neg'}">${fs(totPct,1)}%</span></td>
-  </tr>`;
+  total.style.display = 'block';
+  total.innerHTML = `
+    <div style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Total cartera</div>
+    <div class="pos-total-fila">
+      <div><div class="lbl">Coste</div><div class="val">${f(totCoste)}</div></div>
+      <div><div class="lbl">Valor act.</div><div class="val ${pos?'pos':'neg'}">${f(totAct)}</div></div>
+      <div><div class="lbl">Benef/Pérd</div><div class="val ${pos?'pos':'neg'}">${fs(totBen)}</div></div>
+      <div><div class="lbl">Rentab.</div><div style="margin-top:2px"><span class="pill ${pos?'pos':'neg'}">${fs(totPct,1)}%</span></div></div>
+    </div>`;
 }
 
 // ── RENDER RENTABILIDAD ──
