@@ -674,14 +674,16 @@ async function actualizarPreciosAuto() {
     for (const pos of c.posiciones) {
       const sym = state.yahooMap[pos.ticker] || pos.ticker;
       tareas.push(
-        fetchYahooPrice(sym).then(precio => {
-          if (precio && precio > 0) { pos.precioActual = Math.round(precio*100)/100; ok++; }
-          else fail++;
-        })
-      );
+       async function fetchYahooPrice(symbol) {
+  try {
+    const r = await fetch('/.netlify/functions/precio?symbol='+encodeURIComponent(symbol), {cache:'no-store'});
+    if (r.ok) {
+      const d = await r.json();
+      if (d.price && d.price > 0) return d.price;
     }
-    c.ultimaActualizacion = hoy;
-  }
+  } catch {}
+  return null;
+}
 
   // Todas las peticiones en paralelo
   await Promise.allSettled(tareas);
