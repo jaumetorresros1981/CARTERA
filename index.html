@@ -108,14 +108,17 @@ body { background:var(--bg); color:var(--text); font-family:var(--font); min-hei
 .ic-item { background:var(--surface); padding:10px 12px; }
 .ic-item .lbl { font-size:0.52rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px; }
 .ic-item .val { font-family:var(--font-num); font-size:1rem; font-weight:700; }
-.rent-tabla-wrap { margin:12px 16px 0; }
-.rent-tabla { width:100%; border-collapse:collapse; font-size:0.72rem; }
-.rent-tabla th { font-size:0.52rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; padding:0 8px 8px; text-align:right; border-bottom:1px solid var(--border); }
-.rent-tabla th:first-child { text-align:left; padding-left:0; }
-.rent-tabla td { padding:9px 8px; border-bottom:1px solid var(--border); text-align:right; font-family:var(--font-num); font-size:0.78rem; font-weight:700; }
-.rent-tabla td:first-child { text-align:left; font-family:var(--font); font-size:0.65rem; font-weight:400; color:var(--muted); padding-left:0; }
-.rent-tabla tr:last-child td { border-bottom:none; }
-.rent-tabla tr.actual td { background:rgba(34,197,94,0.04); }
+.rent-wrap { margin:12px 16px 0; overflow-x:auto; }
+.rent-matrix { width:100%; border-collapse:collapse; font-size:0.68rem; }
+.rent-matrix th { font-size:0.5rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; padding:5px 6px; text-align:center; border-bottom:1px solid var(--border); white-space:nowrap; background:var(--surface); }
+.rent-matrix th:first-child { text-align:left; }
+.rent-matrix td { padding:6px 5px; text-align:center; font-family:var(--font-num); font-weight:700; font-size:0.72rem; border-bottom:1px solid var(--border); white-space:nowrap; }
+.rent-matrix td:first-child { text-align:left; font-family:var(--font); font-weight:400; font-size:0.65rem; color:var(--muted); padding-left:0; }
+.rent-matrix td.pos { color:var(--green); }
+.rent-matrix td.neg { color:var(--red); }
+.rent-matrix td.anual { font-size:0.78rem; border-left:2px solid var(--border); }
+.rent-matrix td.vacio { color:var(--muted); font-weight:400; font-size:0.62rem; }
+.rent-matrix tr:last-child td { border-bottom:none; }
 
 /* ── MODALES ── */
 .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999; align-items:flex-end; justify-content:center; }
@@ -187,17 +190,7 @@ input:focus, select:focus { border-color:var(--accent); }
 <!-- TAB RENTABILIDAD -->
 <div id="tab-rentabilidad" style="display:none">
   <div class="ic-resumen" id="ic-resumen"></div>
-  <div class="rent-tabla-wrap">
-    <table class="rent-tabla">
-      <thead><tr>
-        <th>Mes</th>
-        <th>Valor (€)</th>
-        <th>Rent. mes</th>
-        <th>Acum. IC</th>
-      </tr></thead>
-      <tbody id="rent-body"></tbody>
-    </table>
-  </div>
+  <div id="rent-matriz-wrap"></div>
 </div>
 
 <!-- TAB HISTORIAL -->
@@ -417,48 +410,94 @@ function renderPosiciones() {
 function renderRentabilidad() {
   const c = cartera();
   const {coste, act, benef, pct} = calcTotales(c);
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  // Construir mapa año→mes→rentabilidad
   const snaps = [...c.historial].sort((a,b)=>a.fecha.localeCompare(b.fecha));
   const mesActual = c.ultimaActualizacion.slice(0,7);
   const allSnaps = [...snaps];
   if (!allSnaps.find(s=>s.fecha.slice(0,7)===mesActual)) {
     allSnaps.push({fecha:c.ultimaActualizacion, coste, valor:act, benef, pct, virtual:true});
   }
+
+  // Calcular rentabilidad mensual de cada snapshot
   let valorAnterior = null, acumIC = 1;
-  const rows = allSnaps.map((s,i) => {
+  const rentMap = {}; // { '2026-03': 1.0, ... }
+  allSnaps.forEach((s,i) => {
     let rentMes = null;
     if (valorAnterior !== null && valorAnterior > 0) {
       rentMes = (s.valor/valorAnterior - 1)*100;
     } else if (i===0) {
       rentMes = s.coste > 0 ? (s.valor/s.coste - 1)*100 : 0;
     }
-    if (rentMes !== null) acumIC *= (1+rentMes/100);
+    if (rentMes !== null) {
+      acumIC *= (1+rentMes/100);
+      rentMap[s.fecha.slice(0,7)] = rentMes;
+    }
     valorAnterior = s.valor;
-    return {...s, rentMes, acumIC:(acumIC-1)*100};
   });
-  const n = rows.length;
-  const rentAcum = n>0 ? rows[n-1].acumIC : pct;
-  const rentAnual = n>=2 ? (Math.pow(1+rentAcum/100, 12/n)-1)*100 : null;
+
+  const n = allSnaps.length;
+  const rentAcum = (acumIC-1)*100;
+  const rentAnual = n>=2 ? (Math.pow(acumIC, 12/n)-1)*100 : null;
   const fechaInicio = new Date(c.posiciones[0]?.fechaCompra||c.ultimaActualizacion);
-  const meses = Math.max(1, Math.round((new Date(c.ultimaActualizacion)-fechaInicio)/(1000*60*60*24*30.44)));
+  const numMeses = Math.max(1, Math.round((new Date(c.ultimaActualizacion)-fechaInicio)/(1000*60*60*24*30.44)));
+
+  // Resumen IC
   document.getElementById('ic-resumen').innerHTML = `
     <div class="ic-item"><div class="lbl">Rent. acumulada</div><div class="val ${rentAcum>=0?'pos':'neg'}">${fs(rentAcum,2)}%</div></div>
-    <div class="ic-item"><div class="lbl">Rent. anualizada</div><div class="val ${rentAnual===null||rentAnual>=0?'pos':'neg'}">${rentAnual!==null?fs(rentAnual,2)+'%':'—'}</div></div>
-    <div class="ic-item"><div class="lbl">Meses</div><div class="val">${meses}</div></div>
+    <div class="ic-item"><div class="lbl">Rent. anualizada</div><div class="val ${!rentAnual||rentAnual>=0?'pos':'neg'}">${rentAnual!==null?fs(rentAnual,2)+'%':'—'}</div></div>
+    <div class="ic-item"><div class="lbl">Meses</div><div class="val">${numMeses}</div></div>
     <div class="ic-item"><div class="lbl">Beneficio neto</div><div class="val ${benef>=0?'pos':'neg'}">${fs(benef)} €</div></div>
   `;
-  if (rows.length === 0) {
-    document.getElementById('rent-body').innerHTML = `<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted)">Sin snapshots aún</td></tr>`;
+
+  if (allSnaps.length === 0) {
+    document.getElementById('rent-matriz-wrap').innerHTML = '<div class="empty">Sin snapshots aún.<br>Pulsa 📸 Snapshot al cerrar cada mes.</div>';
     return;
   }
-  document.getElementById('rent-body').innerHTML = rows.map(r => {
-    const esMes = r.fecha.slice(0,7)===mesActual;
-    return `<tr${esMes?' class="actual"':''}>
-      <td>${r.fecha.slice(0,7)}${r.virtual?' ★':''}</td>
-      <td class="${r.acumIC>=0?'pos':'neg'}">${f(r.valor)} €</td>
-      <td class="${r.rentMes===null||r.rentMes>=0?'pos':'neg'}">${r.rentMes!==null?fs(r.rentMes,2)+'%':'—'}</td>
-      <td class="${r.acumIC>=0?'pos':'neg'}">${fs(r.acumIC,2)}%</td>
-    </tr>`;
-  }).join('');
+
+  // Obtener años únicos
+  const anios = [...new Set(allSnaps.map(s=>s.fecha.slice(0,4)))].sort();
+
+  // Construir tabla matriz
+  let html = '<div class="rent-wrap"><table class="rent-matrix"><thead><tr>';
+  html += '<th>Año</th>';
+  meses.forEach(m => html += `<th>${m}</th>`);
+  html += '<th>Anual</th></tr></thead><tbody>';
+
+  anios.forEach(anio => {
+    // Calcular rentabilidad anual con interés compuesto
+    let acumAnio = 1;
+    let tieneDatos = false;
+    meses.forEach((m, i) => {
+      const key = anio+'-'+(String(i+1).padStart(2,'0'));
+      if (rentMap[key] !== undefined) {
+        acumAnio *= (1+rentMap[key]/100);
+        tieneDatos = true;
+      }
+    });
+    const rentAnioVal = tieneDatos ? (acumAnio-1)*100 : null;
+    const posAnio = rentAnioVal === null || rentAnioVal >= 0;
+
+    html += `<tr>`;
+    html += `<td>${anio}</td>`;
+    meses.forEach((m, i) => {
+      const key = anio+'-'+(String(i+1).padStart(2,'0'));
+      const r = rentMap[key];
+      if (r !== undefined) {
+        const pos = r >= 0;
+        html += `<td class="${pos?'pos':'neg'}">${fs(r,2)}%</td>`;
+      } else {
+        html += `<td class="vacio">—</td>`;
+      }
+    });
+    html += `<td class="anual ${posAnio?'pos':'neg'}">${rentAnioVal!==null?fs(rentAnioVal,2)+'%':'—'}</td>`;
+    html += `</tr>`;
+  });
+
+  html += '</tbody></table></div>';
+  html += '<div style="font-size:0.57rem;color:var(--muted);margin:8px 16px 0;line-height:1.6">Rentabilidades calculadas con interés compuesto mensual encadenado · ★ mes actual sin snapshot confirmado</div>';
+  document.getElementById('rent-matriz-wrap').innerHTML = html;
 }
 
 // ── RENDER HISTORIAL ──
@@ -674,16 +713,14 @@ async function actualizarPreciosAuto() {
     for (const pos of c.posiciones) {
       const sym = state.yahooMap[pos.ticker] || pos.ticker;
       tareas.push(
-       async function fetchYahooPrice(symbol) {
-  try {
-    const r = await fetch('/.netlify/functions/precio?symbol='+encodeURIComponent(symbol), {cache:'no-store'});
-    if (r.ok) {
-      const d = await r.json();
-      if (d.price && d.price > 0) return d.price;
+        fetchYahooPrice(sym).then(precio => {
+          if (precio && precio > 0) { pos.precioActual = Math.round(precio*100)/100; ok++; }
+          else fail++;
+        })
+      );
     }
-  } catch {}
-  return null;
-}
+    c.ultimaActualizacion = hoy;
+  }
 
   // Todas las peticiones en paralelo
   await Promise.allSettled(tareas);
@@ -703,34 +740,3 @@ function bindEvents() {
   document.getElementById('btn-descargar').addEventListener('click', descargarArchivo);
   document.getElementById('btn-guardar-precios').addEventListener('click', guardarPrecios);
   document.getElementById('btn-cancelar-actualizar').addEventListener('click', ()=>closeOverlay('overlay-actualizar'));
-  document.getElementById('btn-confirmar-op').addEventListener('click', ejecutarOperacion);
-  document.getElementById('btn-cancelar-aportacion').addEventListener('click', ()=>closeOverlay('overlay-aportacion'));
-  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', ()=>switchTab(b.dataset.tab)));
-  document.querySelectorAll('.cartera-btn').forEach(b => b.addEventListener('click', ()=>switchCartera(+b.dataset.cartera)));
-  document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e=>{ if(e.target===o) o.classList.remove('open'); }));
-  document.getElementById('op-tipo').addEventListener('change', toggleOpTipo);
-  document.getElementById('op-ticker').addEventListener('input', function() {
-    const c = cartera();
-    const val = this.value.trim().toUpperCase();
-    const ex = c.posiciones.find(p=>p.ticker===val);
-    document.getElementById('op-yahoo-row').style.display = ex ? 'none' : 'block';
-    if (ex) document.getElementById('op-nombre').value = ex.nombre;
-  });
-}
-
-// ── INIT ──
-renderAll();
-bindEvents();
-state.carteras.forEach(c => c.ultimaActualizacion = new Date().toISOString().slice(0,10));
-actualizarPreciosAuto();
-</script>
-
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
-  });
-}
-</script>
-</body>
-</html>
