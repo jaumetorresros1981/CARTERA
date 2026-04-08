@@ -42,9 +42,9 @@ body { background:var(--bg); color:var(--text); font-family:var(--font); min-hei
 
 /* ── CARTERA SWITCHER ── */
 .cartera-switch { display:flex; gap:0; margin:14px 16px 0; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
-.cartera-btn { flex:1; background:none; border:none; color:var(--muted); font-family:var(--font); font-size:0.72rem; padding:10px 8px; cursor:pointer; transition:all 0.15s; letter-spacing:0.04em; text-align:center; }
+.cartera-btn { flex:1; background:none; border:none; color:var(--muted); font-family:var(--font); font-size:0.72rem; padding:10px 8px; cursor:pointer; transition:all 0.15s; letter-spacing:0.08em; text-align:center; text-transform:uppercase; font-weight:700; }
 .cartera-btn.active { background:var(--surface2); color:var(--text); }
-.cartera-btn span { display:block; font-size:0.55rem; margin-top:2px; }
+.cartera-btn span { display:block; font-family:var(--font-num); font-size:0.82rem; font-weight:700; margin-top:4px; letter-spacing:0; text-transform:none; }
 
 /* ── RESUMEN ── */
 .resumen { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1px; background:var(--border); margin:14px 16px 0; border-radius:10px; overflow:hidden; }
@@ -108,16 +108,16 @@ body { background:var(--bg); color:var(--text); font-family:var(--font); min-hei
 .ic-item { background:var(--surface); padding:10px 12px; }
 .ic-item .lbl { font-size:0.52rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px; }
 .ic-item .val { font-family:var(--font-num); font-size:1rem; font-weight:700; }
-.rent-wrap { margin:12px 16px 0; overflow-x:auto; }
-.rent-matrix { width:100%; border-collapse:collapse; font-size:0.68rem; }
-.rent-matrix th { font-size:0.5rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; padding:5px 6px; text-align:center; border-bottom:1px solid var(--border); white-space:nowrap; background:var(--surface); }
-.rent-matrix th:first-child { text-align:left; }
-.rent-matrix td { padding:6px 5px; text-align:center; font-family:var(--font-num); font-weight:700; font-size:0.72rem; border-bottom:1px solid var(--border); white-space:nowrap; }
-.rent-matrix td:first-child { text-align:left; font-family:var(--font); font-weight:400; font-size:0.65rem; color:var(--muted); padding-left:0; }
+.rent-wrap { margin:12px 8px 0; }
+.rent-matrix { width:100%; border-collapse:collapse; table-layout:fixed; }
+.rent-matrix th { font-size:0.48rem; color:#1a1a2e; text-transform:uppercase; letter-spacing:0.04em; padding:5px 2px; text-align:center; border-bottom:1px solid var(--border); background:var(--surface); font-weight:700; }
+.rent-matrix th:first-child { text-align:left; padding-left:4px; width:32px; }
+.rent-matrix td { padding:5px 2px; text-align:center; font-family:var(--font-num); font-weight:700; font-size:0.62rem; border-bottom:1px solid var(--border); color:#1a1a2e; }
+.rent-matrix td:first-child { text-align:left; font-family:var(--font); font-weight:700; font-size:0.6rem; color:#1a1a2e; padding-left:4px; }
 .rent-matrix td.pos { color:var(--green); }
 .rent-matrix td.neg { color:var(--red); }
-.rent-matrix td.anual { font-size:0.78rem; border-left:2px solid var(--border); }
-.rent-matrix td.vacio { color:var(--muted); font-weight:400; font-size:0.62rem; }
+.rent-matrix td.anual { border-left:1px solid var(--border); font-size:0.65rem; }
+.rent-matrix td.vacio { color:var(--muted); font-weight:400; font-size:0.55rem; }
 .rent-matrix tr:last-child td { border-bottom:none; }
 
 /* ── MODALES ── */
@@ -166,17 +166,16 @@ input:focus, select:focus { border-color:var(--accent); }
 
 <!-- BOTONES -->
 <div class="acciones">
-  <button class="btn" id="btn-auto">🔄 Actualizar</button>
-  <button class="btn" id="btn-actualizar">✏️ Manual</button>
+  <button class="btn" id="btn-auto">🔄 Actualizar precios</button>
   <button class="btn" id="btn-aportacion">＋ Operación</button>
-  <button class="btn primary" id="btn-snapshot">📸 Snapshot</button>
-  <button class="btn save" id="btn-descargar">💾 Guardar</button>
+  <button class="btn primary" id="btn-snapshot">📅 Guardar rentabilidad mensual</button>
 </div>
 
 <!-- TABS -->
 <div class="tabs">
   <button class="tab active" data-tab="posiciones">Posiciones</button>
   <button class="tab" data-tab="rentabilidad">Rentabilidad</button>
+  <button class="tab" data-tab="movimientos">Movimientos</button>
   <button class="tab" data-tab="historial">Historial</button>
   <button class="tab" data-tab="realizadas">Realizados</button>
 </div>
@@ -196,6 +195,11 @@ input:focus, select:focus { border-color:var(--accent); }
 <!-- TAB HISTORIAL -->
 <div id="tab-historial" style="display:none">
   <div id="historial-content"></div>
+</div>
+
+<!-- TAB MOVIMIENTOS -->
+<div id="tab-movimientos" style="display:none">
+  <div id="movimientos-content"></div>
 </div>
 
 <!-- TAB REALIZADAS -->
@@ -233,15 +237,25 @@ input:focus, select:focus { border-color:var(--accent); }
       </select>
     </div>
     <div id="op-compra-fields">
-      <div class="form-grid2">
-        <div class="form-row"><label>Ticker</label><input id="op-ticker" placeholder="e.g. AAPL"></div>
-        <div class="form-row"><label>Nombre</label><input id="op-nombre" placeholder="Apple Inc."></div>
+      <div class="form-row">
+        <label>Valor</label>
+        <select id="op-ticker-select">
+          <option value="">— Selecciona un valor —</option>
+          <option value="__nuevo__">＋ Nuevo valor...</option>
+        </select>
       </div>
-      <div class="form-row" id="op-yahoo-row">
-        <label>Símbolo Yahoo Finance <span style="font-size:0.5rem;color:var(--muted)">(precios auto)</span></label>
-        <input id="op-yahoo" placeholder="e.g. AAPL · GRE.MC">
-        <div style="font-size:0.57rem;color:var(--muted);margin-top:4px">Búscalo en <a href="https://finance.yahoo.com" target="_blank" style="color:var(--green)">finance.yahoo.com</a></div>
+      <div id="op-nuevo-fields" style="display:none">
+        <div class="form-grid2">
+          <div class="form-row"><label>Ticker nuevo</label><input id="op-ticker" placeholder="e.g. AAPL"></div>
+          <div class="form-row"><label>Nombre</label><input id="op-nombre" placeholder="Apple Inc."></div>
+        </div>
+        <div class="form-row" id="op-yahoo-row">
+          <label>Símbolo Yahoo Finance <span style="font-size:0.5rem;color:var(--muted)">(precios auto)</span></label>
+          <input id="op-yahoo" placeholder="e.g. AAPL · GRE.MC">
+          <div style="font-size:0.57rem;color:var(--muted);margin-top:4px">Búscalo en <a href="https://finance.yahoo.com" target="_blank" style="color:var(--green)">finance.yahoo.com</a></div>
+        </div>
       </div>
+      <div id="op-existente-info" style="display:none;font-size:0.68rem;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:10px"></div>
       <div class="form-grid2">
         <div class="form-row"><label>Nº acciones</label><input id="op-acciones" type="number" placeholder="0"></div>
         <div class="form-row"><label>Precio (€)</label><input id="op-precio" type="number" step="0.01" placeholder="0.00"></div>
@@ -274,18 +288,11 @@ var STATE = {
   "carteras": [
     {
       "nombre": "Cartera Jaume",
-      "posiciones": [
-        {"ticker":"ABEA.XETRA","nombre":"Alphabet (Google)","acciones":40,"precioMedio":249.6,"precioActual":256.1,"fechaCompra":"2026-03-01"},
-        {"ticker":"ABRX.BR","nombre":"argenx SE","acciones":2,"precioMedio":637.6,"precioActual":647.2,"fechaCompra":"2026-03-01"},
-        {"ticker":"GRE.MC","nombre":"Grenergy Renovables","acciones":52,"precioMedio":115.4,"precioActual":119,"fechaCompra":"2026-03-01"},
-        {"ticker":"LOG.MC","nombre":"Logista","acciones":244,"precioMedio":32.76,"precioActual":32.96,"fechaCompra":"2026-03-01"},
-        {"ticker":"NVD.TRADEGATE","nombre":"NVIDIA","acciones":19,"precioMedio":151.47,"precioActual":153.74,"fechaCompra":"2026-03-01"},
-        {"ticker":"SGLD.AS","nombre":"Invesco Physical Gold ETC","acciones":14,"precioMedio":392.41,"precioActual":389.31,"fechaCompra":"2026-03-01"},
-        {"ticker":"XU10.XETRA","nombre":"Xtrackers US Treasuries 7-10","acciones":592,"precioMedio":26.98,"precioActual":27,"fechaCompra":"2026-03-01"}
-      ],
-      "comisionesTotales": 30,
+      "posiciones": [],
+      "comisionesTotales": 0,
       "historial": [],
       "realizadas": [],
+      "movimientos": [],
       "ultimaActualizacion": "2026-04-05"
     },
     {
@@ -294,6 +301,7 @@ var STATE = {
       "comisionesTotales": 0,
       "historial": [],
       "realizadas": [],
+      "movimientos": [],
       "ultimaActualizacion": "2026-04-05"
     }
   ],
@@ -302,9 +310,11 @@ var STATE = {
     "ABRX.BR":       "ARGX.BR",
     "GRE.MC":        "GRE.MC",
     "LOG.MC":        "LOG.MC",
-    "NVD.TRADEGATE": "NVD.DE",
+    "NVD.XETRA":     "NVD.DE",
     "SGLD.AS":       "SGLD.AS",
-    "XU10.XETRA":    "XU10.DE"
+    "XU10.XETRA":    "XU10.DE",
+    "DB1.XETRA":     "DB1.DE",
+    "RHM.XETRA":     "RHM.DE"
   }
 };
 </script>
@@ -376,7 +386,9 @@ function renderPosiciones() {
           <div class="pos-card-nombre">${p.nombre}</div>
           <div class="pos-card-ticker">${p.ticker}</div>
         </div>
-        <span class="pill ${pos?'pos':'neg'}">${fs(pct,1)}%</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="pill ${pos?'pos':'neg'}">${fs(pct,1)}%</span>
+        </div>
       </div>
       <div class="pos-card-fila">
         <div class="pos-campo"><div class="lbl">Acciones</div><div class="val">${p.acciones}</div></div>
@@ -452,51 +464,45 @@ function renderRentabilidad() {
   `;
 
   if (allSnaps.length === 0) {
-    document.getElementById('rent-matriz-wrap').innerHTML = '<div class="empty">Sin snapshots aún.<br>Pulsa 📸 Snapshot al cerrar cada mes.</div>';
+    document.getElementById('rent-matriz-wrap').innerHTML = '<div class="empty">Sin snapshots aún.<br>Pulsa 📅 Guardar rentabilidad mensual al cerrar cada mes.</div>';
     return;
   }
 
-  // Obtener años únicos
   const anios = [...new Set(allSnaps.map(s=>s.fecha.slice(0,4)))].sort();
+  const mesesCortos = ['E','F','M','A','My','Jn','Jl','Ag','S','O','N','D'];
 
-  // Construir tabla matriz
   let html = '<div class="rent-wrap"><table class="rent-matrix"><thead><tr>';
   html += '<th>Año</th>';
-  meses.forEach(m => html += `<th>${m}</th>`);
+  mesesCortos.forEach(m => html += `<th>${m}</th>`);
   html += '<th>Anual</th></tr></thead><tbody>';
 
   anios.forEach(anio => {
-    // Calcular rentabilidad anual con interés compuesto
-    let acumAnio = 1;
-    let tieneDatos = false;
+    let acumAnio = 1, tieneDatos = false;
     meses.forEach((m, i) => {
       const key = anio+'-'+(String(i+1).padStart(2,'0'));
-      if (rentMap[key] !== undefined) {
-        acumAnio *= (1+rentMap[key]/100);
-        tieneDatos = true;
-      }
+      if (rentMap[key] !== undefined) { acumAnio *= (1+rentMap[key]/100); tieneDatos = true; }
     });
     const rentAnioVal = tieneDatos ? (acumAnio-1)*100 : null;
-    const posAnio = rentAnioVal === null || rentAnioVal >= 0;
+    const posAnio = !rentAnioVal || rentAnioVal >= 0;
 
-    html += `<tr>`;
-    html += `<td>${anio}</td>`;
+    html += `<tr><td>${anio}</td>`;
     meses.forEach((m, i) => {
       const key = anio+'-'+(String(i+1).padStart(2,'0'));
       const r = rentMap[key];
+      const esMes = key === mesActual;
       if (r !== undefined) {
         const pos = r >= 0;
-        html += `<td class="${pos?'pos':'neg'}">${fs(r,2)}%</td>`;
+        html += `<td class="${pos?'pos':'neg'}"${esMes?' style="background:rgba(22,163,74,0.08)"':''}>${fs(r,1)}%</td>`;
       } else {
         html += `<td class="vacio">—</td>`;
       }
     });
-    html += `<td class="anual ${posAnio?'pos':'neg'}">${rentAnioVal!==null?fs(rentAnioVal,2)+'%':'—'}</td>`;
+    html += `<td class="anual ${posAnio?'pos':'neg'}">${rentAnioVal!==null?fs(rentAnioVal,1)+'%':'—'}</td>`;
     html += `</tr>`;
   });
 
   html += '</tbody></table></div>';
-  html += '<div style="font-size:0.57rem;color:var(--muted);margin:8px 16px 0;line-height:1.6">Rentabilidades calculadas con interés compuesto mensual encadenado · ★ mes actual sin snapshot confirmado</div>';
+  html += '<div style="font-size:0.55rem;color:var(--muted);margin:6px 8px 0;line-height:1.6">Interés compuesto encadenado · ★ mes actual sin confirmar</div>';
   document.getElementById('rent-matriz-wrap').innerHTML = html;
 }
 
@@ -535,19 +541,49 @@ function renderRealizadas() {
   el.innerHTML = '<div class="lista">'+items+'</div><div class="lista" style="margin-top:8px"><div class="lista-row"><div class="lista-row-left"><div class="fecha">Total realizados</div></div><div class="lista-row-right"><div class="val-main '+( posT?'pos':'neg')+'">'+fs(total)+' €</div></div></div></div>';
 }
 
+// ── RENDER MOVIMIENTOS ──
+function renderMovimientos() {
+  const c = cartera();
+  const el = document.getElementById('movimientos-content');
+  const movs = (c.movimientos || []);
+  if (!movs.length) {
+    el.innerHTML = '<div class="empty">Sin movimientos registrados.<br>Aparecerán aquí cada vez que hagas una compra o venta.</div>';
+    return;
+  }
+  el.innerHTML = '<div class="lista">' + [...movs].reverse().map((m, i) => {
+    const idx = movs.length - 1 - i;
+    const esCompra = m.tipo === 'compra';
+    return `<div class="lista-row">
+      <div class="lista-row-left">
+        <div class="fecha" style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:0.6rem;padding:2px 7px;border-radius:20px;font-weight:500;${esCompra?'background:rgba(22,163,74,0.12);color:#16a34a':'background:rgba(220,38,38,0.12);color:#dc2626'}">${esCompra?'COMPRA':'VENTA'}</span>
+          <span>${m.nombre}</span>
+        </div>
+        <div class="sub">${m.fecha} · ${m.ticker} · ${m.acciones} acc. · ${f(m.precio)} €/acc${m.comision>0?' · com. '+f(m.comision)+' €':''}</div>
+      </div>
+      <div class="lista-row-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+        <div class="val-main ${esCompra?'neg':'pos'}">${esCompra?'-':'+'}${f(m.total)} €</div>
+        ${!esCompra && m.benefNeto!==undefined ? `<div style="font-size:0.6rem;${m.benefNeto>=0?'color:#16a34a':'color:#dc2626'}">${fs(m.benefNeto)} € benef.</div>` : ''}
+        <button onclick="borrarMovimiento(${idx})" style="background:rgba(220,38,38,0.1);border:none;color:#dc2626;border-radius:6px;padding:2px 7px;font-size:0.58rem;cursor:pointer;font-family:var(--font);margin-top:2px">✕ Borrar</button>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
 function renderAll() {
   renderResumen();
   renderPosiciones();
   renderRentabilidad();
   renderHistorial();
   renderRealizadas();
+  renderMovimientos();
 }
 
 // ── TABS ──
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
   document.querySelector('[data-tab="'+tab+'"]').classList.add('active');
-  ['posiciones','rentabilidad','historial','realizadas'].forEach(t => {
+  ['posiciones','rentabilidad','movimientos','historial','realizadas'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t===tab ? 'block' : 'none';
   });
 }
@@ -590,10 +626,38 @@ function openAportacion() {
   document.getElementById('op-fecha').value = new Date().toISOString().slice(0,10);
   document.getElementById('op-venta-fecha').value = new Date().toISOString().slice(0,10);
   document.getElementById('op-venta-ticker').innerHTML = c.posiciones.map(p=>`<option value="${p.ticker}">${p.ticker} — ${p.nombre}</option>`).join('');
+
+  // Poblar el select de compra con valores conocidos del yahooMap + posiciones actuales
+  const tickersConocidos = {
+    'ABEA.XETRA': {nombre:'Alphabet (Google)', yahoo:'ABEA.DE'},
+    'ABRX.BR':    {nombre:'argenx SE', yahoo:'ARGX.BR'},
+    'GRE.MC':     {nombre:'Grenergy Renovables', yahoo:'GRE.MC'},
+    'LOG.MC':     {nombre:'Logista', yahoo:'LOG.MC'},
+    'NVD.XETRA':  {nombre:'NVIDIA', yahoo:'NVD.DE'},
+    'SGLD.AS':    {nombre:'Invesco Physical Gold ETC', yahoo:'SGLD.AS'},
+    'XU10.XETRA': {nombre:'Xtrackers US Treasuries 7-10', yahoo:'XU10.DE'},
+    'DB1.XETRA':  {nombre:'Deutsche Börse', yahoo:'DB1.DE'},
+    'RHM.XETRA':  {nombre:'Rheinmetall', yahoo:'RHM.DE'},
+  };
+  // Añadir también los que están en yahooMap pero no en tickersConocidos
+  Object.entries(state.yahooMap).forEach(([t, y]) => {
+    if (!tickersConocidos[t]) {
+      const pos = c.posiciones.find(p=>p.ticker===t);
+      tickersConocidos[t] = {nombre: pos ? pos.nombre : t, yahoo: y};
+    }
+  });
+
+  const optsHTML = Object.entries(tickersConocidos).map(([t, info]) =>
+    `<option value="${t}">${t} — ${info.nombre}</option>`
+  ).join('');
+  document.getElementById('op-ticker-select').innerHTML =
+    '<option value="">— Selecciona un valor —</option>' + optsHTML + '<option value="__nuevo__">＋ Nuevo valor...</option>';
+
   document.getElementById('op-ticker').value = '';
   document.getElementById('op-nombre').value = '';
   document.getElementById('op-yahoo').value = '';
-  document.getElementById('op-yahoo-row').style.display = 'block';
+  document.getElementById('op-nuevo-fields').style.display = 'none';
+  document.getElementById('op-existente-info').style.display = 'none';
   document.getElementById('op-compra-fields').style.display = 'block';
   document.getElementById('op-venta-fields').style.display = 'none';
   document.getElementById('op-tipo').value = 'compra';
@@ -610,9 +674,11 @@ function ejecutarOperacion() {
   const c = cartera();
   const tipo = document.getElementById('op-tipo').value;
   if (tipo === 'compra') {
-    const ticker  = document.getElementById('op-ticker').value.trim().toUpperCase();
-    const nombre  = document.getElementById('op-nombre').value.trim();
-    const yahoo   = document.getElementById('op-yahoo').value.trim();
+    const selVal = document.getElementById('op-ticker-select').value;
+    const esNuevo = selVal === '__nuevo__' || selVal === '';
+    const ticker  = esNuevo ? document.getElementById('op-ticker').value.trim().toUpperCase() : selVal;
+    const nombre  = esNuevo ? document.getElementById('op-nombre').value.trim() : (c.posiciones.find(p=>p.ticker===ticker)?.nombre || ticker);
+    const yahoo   = esNuevo ? document.getElementById('op-yahoo').value.trim() : (state.yahooMap[ticker] || '');
     const acciones= parseInt(document.getElementById('op-acciones').value);
     const precio  = parseFloat(document.getElementById('op-precio').value);
     const comision= parseFloat(document.getElementById('op-comision').value)||0;
@@ -629,6 +695,8 @@ function ejecutarOperacion() {
       if (yahoo) state.yahooMap[ticker] = yahoo;
     }
     c.comisionesTotales += comision;
+    if (!c.movimientos) c.movimientos = [];
+    c.movimientos.push({tipo:'compra', ticker, nombre:nombre||ticker, fecha, acciones, precio, comision, total:acciones*precio+comision});
   } else {
     const ticker     = document.getElementById('op-venta-ticker').value;
     const accVenta   = parseInt(document.getElementById('op-venta-acc').value);
@@ -641,6 +709,8 @@ function ejecutarOperacion() {
     if (accVenta > pos.acciones) { alert('No puedes vender más de lo que tienes.'); return; }
     const benefNeto = (precioVenta - pos.precioMedio)*accVenta - comision;
     c.realizadas.push({ticker, nombre:pos.nombre, fecha, acciones:accVenta, precioCompra:pos.precioMedio, precioVenta, benefNeto});
+    if (!c.movimientos) c.movimientos = [];
+    c.movimientos.push({tipo:'venta', ticker, nombre:pos.nombre, fecha, acciones:accVenta, precio:precioVenta, comision, total:accVenta*precioVenta-comision, benefNeto});
     if (accVenta === pos.acciones) c.posiciones = c.posiciones.filter(p=>p.ticker!==ticker);
     else pos.acciones -= accVenta;
     c.comisionesTotales += comision;
@@ -648,113 +718,23 @@ function ejecutarOperacion() {
   c.ultimaActualizacion = new Date().toISOString().slice(0,10);
   renderAll();
   closeOverlay('overlay-aportacion');
+  autoguardar();
+}
+
+function autoguardar() {
+  try {
+    const stateJson = JSON.stringify(state);
+    let html = document.documentElement.outerHTML;
+    html = html.replace(/var STATE = \{[\s\S]*?\};/, 'var STATE = '+stateJson+';');
+    const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'carteras.html'; a.click();
+    URL.revokeObjectURL(url);
+    setStatus('✅ Guardado automáticamente', true);
+    setTimeout(() => setStatus('', null), 3000);
+  } catch(e) {}
 }
 
 function guardarSnapshot() {
-  const c = cartera();
-  const {coste, act, benef, pct} = calcTotales(c);
-  const fecha = c.ultimaActualizacion, mes = fecha.slice(0,7);
-  const idx = c.historial.findIndex(h=>h.fecha.slice(0,7)===mes);
-  if (idx>=0) {
-    if (!confirm('Ya existe snapshot para '+mes+'. ¿Sobreescribir?')) return;
-    c.historial[idx] = {fecha, coste, valor:act, benef, pct};
-  } else {
-    c.historial.push({fecha, coste, valor:act, benef, pct});
-  }
-  renderAll();
-  alert('✅ Snapshot del '+fecha+' guardado. Pulsa 💾 para descargar.');
-}
-
-function descargarArchivo() {
-  const stateJson = JSON.stringify(state);
-  let html = document.documentElement.outerHTML;
-  html = html.replace(/var STATE = \{[\s\S]*?\};/, 'var STATE = '+stateJson+';');
-  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = 'carteras.html'; a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ── PRECIOS AUTO ──
-function setStatus(msg, ok) {
-  document.getElementById('status-txt').textContent = msg;
-  const dot = document.getElementById('status-dot');
-  dot.className = 'status-dot' + (ok===true?' ok': ok===false?' err':'');
-}
-
-async function fetchPrecio(symbol) {
-  try {
-    const r = await fetch('/.netlify/functions/precio?symbol=' + encodeURIComponent(symbol), {cache:'no-store'});
-    if (r.ok) {
-      const d = await r.json();
-      if (d.price && d.price > 0) return d.price;
-    }
-  } catch {}
-  return null;
-}
-
-async function actualizarPreciosAuto() {
-  setStatus('⏳ Obteniendo precios…', null);
-  const hoy = new Date().toISOString().slice(0,10);
-  let ok=0, fail=0;
-  const tareas = [];
-  for (const c of state.carteras) {
-    for (const pos of c.posiciones) {
-      const sym = state.yahooMap[pos.ticker] || pos.ticker;
-      tareas.push(
-        fetchPrecio(sym).then(precio => {
-          if (precio && precio > 0) { pos.precioActual = Math.round(precio*100)/100; ok++; }
-          else fail++;
-        })
-      );
-    }
-    c.ultimaActualizacion = hoy;
-  }
-  await Promise.allSettled(tareas);
-  renderAll();
-  if (fail===0) setStatus('✅ Actualizado · '+hoy, true);
-  else if (ok>0) setStatus('⚠️ '+ok+' ok, '+fail+' sin datos · '+hoy, null);
-  else setStatus('❌ Sin conexión · precios anteriores', false);
-}
-
-// ── BIND EVENTS ──
-function bindEvents() {
-  document.getElementById('btn-auto').addEventListener('click', actualizarPreciosAuto);
-  document.getElementById('btn-actualizar').addEventListener('click', openActualizar);
-  document.getElementById('btn-aportacion').addEventListener('click', openAportacion);
-  document.getElementById('btn-snapshot').addEventListener('click', guardarSnapshot);
-  document.getElementById('btn-descargar').addEventListener('click', descargarArchivo);
-  document.getElementById('btn-guardar-precios').addEventListener('click', guardarPrecios);
-  document.getElementById('btn-cancelar-actualizar').addEventListener('click', ()=>closeOverlay('overlay-actualizar'));
-  document.getElementById('btn-confirmar-op').addEventListener('click', ejecutarOperacion);
-  document.getElementById('btn-cancelar-aportacion').addEventListener('click', ()=>closeOverlay('overlay-aportacion'));
-  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', ()=>switchTab(b.dataset.tab)));
-  document.querySelectorAll('.cartera-btn').forEach(b => b.addEventListener('click', ()=>switchCartera(+b.dataset.cartera)));
-  document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e=>{ if(e.target===o) o.classList.remove('open'); }));
-  document.getElementById('op-tipo').addEventListener('change', toggleOpTipo);
-  document.getElementById('op-ticker').addEventListener('input', function() {
-    const c = cartera();
-    const val = this.value.trim().toUpperCase();
-    const ex = c.posiciones.find(p=>p.ticker===val);
-    document.getElementById('op-yahoo-row').style.display = ex ? 'none' : 'block';
-    if (ex) document.getElementById('op-nombre').value = ex.nombre;
-  });
-}
-
-// ── INIT ──
-renderAll();
-bindEvents();
-state.carteras.forEach(c => c.ultimaActualizacion = new Date().toISOString().slice(0,10));
-actualizarPreciosAuto();
-</script>
-
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
-  });
-}
-</script>
-</body>
-</
+  const c = carte
