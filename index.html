@@ -298,13 +298,13 @@ var STATE = {
     }
   ],
   "yahooMap": {
-    "ABEA.XETRA":"ABEA.DE",
-    "ABRX.BR":"ARGNX.BR",
-    "GRE.MC":"GRE.MC",
-    "LOG.MC":"LOG.MC",
-    "NVD.TRADEGATE":"NVDA",
-    "SGLD.AS":"SGLD.AS",
-    "XU10.XETRA":"XU10.DE"
+    "ABEA.XETRA":    "GOOGL",
+    "ABRX.BR":       "ARGNX",
+    "GRE.MC":        "GRE.MC",
+    "LOG.MC":        "LOG.MC",
+    "NVD.TRADEGATE": "NVDA",
+    "SGLD.AS":       "SGLD.AS",
+    "XU10.XETRA":    "XU10.DE"
   }
 };
 </script>
@@ -683,17 +683,9 @@ function setStatus(msg, ok) {
   dot.className = 'status-dot' + (ok===true?' ok': ok===false?' err':'');
 }
 
-function fetchConTimeout(url, ms=6000) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), ms);
-  return fetch(url, {signal: ctrl.signal, cache:'no-store'})
-    .then(r => { clearTimeout(t); return r; })
-    .catch(e => { clearTimeout(t); throw e; });
-}
-
-async function fetchYahooPrice(symbol) {
+async function fetchPrecio(symbol) {
   try {
-    const r = await fetchConTimeout('/.netlify/functions/precio?symbol='+encodeURIComponent(symbol));
+    const r = await fetch('/.netlify/functions/precio?symbol=' + encodeURIComponent(symbol), {cache:'no-store'});
     if (r.ok) {
       const d = await r.json();
       if (d.price && d.price > 0) return d.price;
@@ -706,14 +698,12 @@ async function actualizarPreciosAuto() {
   setStatus('⏳ Obteniendo precios…', null);
   const hoy = new Date().toISOString().slice(0,10);
   let ok=0, fail=0;
-
-  // Recoger todas las posiciones de todas las carteras
   const tareas = [];
   for (const c of state.carteras) {
     for (const pos of c.posiciones) {
       const sym = state.yahooMap[pos.ticker] || pos.ticker;
       tareas.push(
-        fetchYahooPrice(sym).then(precio => {
+        fetchPrecio(sym).then(precio => {
           if (precio && precio > 0) { pos.precioActual = Math.round(precio*100)/100; ok++; }
           else fail++;
         })
@@ -721,10 +711,7 @@ async function actualizarPreciosAuto() {
     }
     c.ultimaActualizacion = hoy;
   }
-
-  // Todas las peticiones en paralelo
   await Promise.allSettled(tareas);
-
   renderAll();
   if (fail===0) setStatus('✅ Actualizado · '+hoy, true);
   else if (ok>0) setStatus('⚠️ '+ok+' ok, '+fail+' sin datos · '+hoy, null);
@@ -740,3 +727,34 @@ function bindEvents() {
   document.getElementById('btn-descargar').addEventListener('click', descargarArchivo);
   document.getElementById('btn-guardar-precios').addEventListener('click', guardarPrecios);
   document.getElementById('btn-cancelar-actualizar').addEventListener('click', ()=>closeOverlay('overlay-actualizar'));
+  document.getElementById('btn-confirmar-op').addEventListener('click', ejecutarOperacion);
+  document.getElementById('btn-cancelar-aportacion').addEventListener('click', ()=>closeOverlay('overlay-aportacion'));
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', ()=>switchTab(b.dataset.tab)));
+  document.querySelectorAll('.cartera-btn').forEach(b => b.addEventListener('click', ()=>switchCartera(+b.dataset.cartera)));
+  document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e=>{ if(e.target===o) o.classList.remove('open'); }));
+  document.getElementById('op-tipo').addEventListener('change', toggleOpTipo);
+  document.getElementById('op-ticker').addEventListener('input', function() {
+    const c = cartera();
+    const val = this.value.trim().toUpperCase();
+    const ex = c.posiciones.find(p=>p.ticker===val);
+    document.getElementById('op-yahoo-row').style.display = ex ? 'none' : 'block';
+    if (ex) document.getElementById('op-nombre').value = ex.nombre;
+  });
+}
+
+// ── INIT ──
+renderAll();
+bindEvents();
+state.carteras.forEach(c => c.ultimaActualizacion = new Date().toISOString().slice(0,10));
+actualizarPreciosAuto();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
