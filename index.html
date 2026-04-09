@@ -59,7 +59,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--font); min-hei
 .acciones { display:flex; gap:8px; margin:12px 16px 0; flex-wrap:wrap; }
 .btn { background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:var(--font); font-size:0.68rem; padding:9px 12px; border-radius:8px; cursor:pointer; transition:all 0.15s; letter-spacing:0.03em; white-space:nowrap; }
 .btn:active { opacity:0.7; transform:scale(0.97); }
-.btn.primary { background:var(--green); color:#ffffff; border-color:var(--green); font-weight:500; }
+.btn.save { background:#dcfce7; color:#16a34a; border-color:#bbf7d0; }
 .btn.save { background:#dcfce7; color:#16a34a; border-color:#bbf7d0; }
 
 /* ── TABS ── */
@@ -187,6 +187,7 @@ input:focus, select:focus { border-color:var(--accent); }
   <button class="btn" id="btn-actualizar">✏️ Precios manuales</button>
   <button class="btn" id="btn-aportacion">＋ Operación</button>
   <button class="btn primary" id="btn-snapshot">📅 Guardar rentabilidad mensual</button>
+  <button class="btn save" id="btn-backup">💾 Copia de seguridad</button>
 </div>
 
 <!-- TABS -->
@@ -904,9 +905,57 @@ function borrarMovimiento(idx) {
   autoguardar();
 }
 
+// ── LOCAL STORAGE ──
+const LS_KEY = 'cartera_jaume_state';
+
+function guardarLocal() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+  } catch(e) {}
+}
+
+function cargarLocal() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      // Fusionar con STATE base para no perder estructura
+      if (saved.carteras) state.carteras = saved.carteras;
+      if (saved.yahooMap) state.yahooMap = saved.yahooMap;
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+function hacerBackup() {
+  const stateJson = JSON.stringify(state);
+  let html = document.documentElement.outerHTML;
+  html = html.replace(/var STATE = \{[\s\S]*?\};/, 'var STATE = '+stateJson+';');
+  const fecha = new Date().toISOString().slice(0,10);
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'cartera_backup_'+fecha+'.html';
+  a.click();
+  URL.revokeObjectURL(url);
+  setStatus('✅ Copia de seguridad descargada · '+fecha, true);
+  setTimeout(() => setStatus('', null), 3000);
+}
+
+// Sobreescribir autoguardar para usar localStorage
+function autoguardar() {
+  guardarLocal();
+  setStatus('✅ Guardado', true);
+  setTimeout(() => setStatus('', null), 2000);
+}
+
 // ── INIT ──
+cargarLocal(); // Cargar datos del móvil si existen
 renderAll();
 bindEvents();
+document.getElementById('btn-backup').addEventListener('click', hacerBackup);
 state.carteras.forEach(c => c.ultimaActualizacion = new Date().toISOString().slice(0,10));
 
 // Auto-snapshot el primer día de cada mes
@@ -915,7 +964,6 @@ state.carteras.forEach(c => c.ultimaActualizacion = new Date().toISOString().sli
   const esPrimerDia = hoy.getDate() === 1;
   if (!esPrimerDia) return;
   const mesHoy = hoy.toISOString().slice(0,7);
-  // Guardar snapshot de cada cartera si no existe ya para este mes
   let guardado = false;
   state.carteras.forEach(c => {
     const yaExiste = c.historial.find(h => h.fecha.slice(0,7) === mesHoy);
