@@ -208,20 +208,6 @@ input:focus, select:focus { border-color:var(--accent); }
 <div id="tab-rentabilidad" style="display:none">
   <div class="ic-resumen" id="ic-resumen"></div>
   <div id="rent-matriz-wrap"></div>
-  <button class="rent-expand-btn" id="btn-expand-rent">
-    <span>Ver tabla completa</span>
-    <span>⛶ Expandir</span>
-  </button>
-</div>
-
-<!-- MODAL RENTABILIDAD EXPANDIDA -->
-<div class="overlay-rent" id="overlay-rent">
-  <div class="modal-rent">
-    <div class="modal-rent-handle"></div>
-    <div class="modal-rent-titulo">Rentabilidades · Interés compuesto</div>
-    <div id="rent-matriz-grande"></div>
-    <button class="btn-cerrar-rent" id="btn-cerrar-rent">Cerrar</button>
-  </div>
 </div>
 
 <!-- TAB HISTORIAL -->
@@ -875,9 +861,6 @@ function bindEvents() {
   document.getElementById('btn-actualizar').addEventListener('click', openActualizar);
   document.getElementById('btn-aportacion').addEventListener('click', openAportacion);
   document.getElementById('btn-snapshot').addEventListener('click', guardarSnapshot);
-  document.getElementById('btn-expand-rent').addEventListener('click', ()=>document.getElementById('overlay-rent').classList.add('open'));
-  document.getElementById('btn-cerrar-rent').addEventListener('click', ()=>document.getElementById('overlay-rent').classList.remove('open'));
-  document.getElementById('overlay-rent').addEventListener('click', e=>{ if(e.target===document.getElementById('overlay-rent')) document.getElementById('overlay-rent').classList.remove('open'); });
   document.getElementById('btn-guardar-precios').addEventListener('click', guardarPrecios);
   document.getElementById('btn-cancelar-actualizar').addEventListener('click', ()=>closeOverlay('overlay-actualizar'));
   document.getElementById('btn-confirmar-op').addEventListener('click', ejecutarOperacion);
