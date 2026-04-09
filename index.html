@@ -120,7 +120,25 @@ body { background:var(--bg); color:var(--text); font-family:var(--font); min-hei
 .rent-matrix td.vacio { color:var(--muted); font-weight:400; font-size:0.55rem; }
 .rent-matrix tr:last-child td { border-bottom:none; }
 
-/* ── MODALES ── */
+/* ── MODAL RENTABILIDAD EXPANDIDA ── */
+.rent-expand-btn { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-family:var(--font); font-size:0.68rem; color:var(--text); cursor:pointer; display:flex; justify-content:space-between; align-items:center; margin:10px 8px 0; width:calc(100% - 16px); }
+.rent-expand-btn span:last-child { font-size:0.62rem; color:var(--muted); }
+.overlay-rent { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999; align-items:flex-end; justify-content:center; }
+.overlay-rent.open { display:flex; }
+.modal-rent { background:var(--surface); border-radius:18px 18px 0 0; padding:16px 14px 32px; width:100%; max-height:92vh; overflow-y:auto; border-top:1px solid var(--border); }
+.modal-rent-handle { width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 14px; }
+.modal-rent-titulo { font-size:0.65rem; font-weight:700; color:var(--text); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.06em; }
+.rent-matrix-grande { width:100%; border-collapse:collapse; table-layout:fixed; }
+.rent-matrix-grande th { font-size:0.58rem; color:#1a1a2e; text-transform:uppercase; padding:6px 3px; text-align:center; border-bottom:2px solid var(--border); font-weight:700; }
+.rent-matrix-grande th:first-child { text-align:left; width:40px; }
+.rent-matrix-grande td { padding:9px 3px; text-align:center; font-family:var(--font-num); font-weight:700; font-size:0.88rem; border-bottom:1px solid var(--border); color:#1a1a2e; }
+.rent-matrix-grande td:first-child { text-align:left; font-family:var(--font); font-weight:700; font-size:0.7rem; color:#1a1a2e; }
+.rent-matrix-grande td.pos { color:var(--green); }
+.rent-matrix-grande td.neg { color:var(--red); }
+.rent-matrix-grande td.anual { border-left:1px solid var(--border); font-size:0.92rem; }
+.rent-matrix-grande td.vacio { color:var(--muted); font-weight:400; font-size:0.65rem; }
+.rent-matrix-grande tr:last-child td { border-bottom:none; }
+.btn-cerrar-rent { width:100%; background:var(--text); color:var(--surface); border:none; border-radius:10px; padding:12px; font-family:var(--font); font-size:0.72rem; cursor:pointer; margin-top:16px; }
 .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999; align-items:flex-end; justify-content:center; }
 .overlay.open { display:flex; }
 .modal { background:var(--surface); border-radius:18px 18px 0 0; padding:20px 16px 40px; width:100%; max-height:88vh; overflow-y:auto; border-top:1px solid var(--border); box-shadow:0 -4px 24px rgba(0,0,0,0.12); }
@@ -166,7 +184,7 @@ input:focus, select:focus { border-color:var(--accent); }
 
 <!-- BOTONES -->
 <div class="acciones">
-  <button class="btn" id="btn-auto">🔄 Actualizar precios</button>
+  <button class="btn" id="btn-actualizar">✏️ Precios manuales</button>
   <button class="btn" id="btn-aportacion">＋ Operación</button>
   <button class="btn primary" id="btn-snapshot">📅 Guardar rentabilidad mensual</button>
 </div>
@@ -190,6 +208,20 @@ input:focus, select:focus { border-color:var(--accent); }
 <div id="tab-rentabilidad" style="display:none">
   <div class="ic-resumen" id="ic-resumen"></div>
   <div id="rent-matriz-wrap"></div>
+  <button class="rent-expand-btn" id="btn-expand-rent">
+    <span>Ver tabla completa</span>
+    <span>⛶ Expandir</span>
+  </button>
+</div>
+
+<!-- MODAL RENTABILIDAD EXPANDIDA -->
+<div class="overlay-rent" id="overlay-rent">
+  <div class="modal-rent">
+    <div class="modal-rent-handle"></div>
+    <div class="modal-rent-titulo">Rentabilidades · Interés compuesto</div>
+    <div id="rent-matriz-grande"></div>
+    <button class="btn-cerrar-rent" id="btn-cerrar-rent">Cerrar</button>
+  </div>
 </div>
 
 <!-- TAB HISTORIAL -->
@@ -504,6 +536,37 @@ function renderRentabilidad() {
   html += '</tbody></table></div>';
   html += '<div style="font-size:0.55rem;color:var(--muted);margin:6px 8px 0;line-height:1.6">Interés compuesto encadenado · ★ mes actual sin confirmar</div>';
   document.getElementById('rent-matriz-wrap').innerHTML = html;
+
+  // Tabla expandida con meses completos y números más grandes
+  const mesesCompletos = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  let htmlG = '<table class="rent-matrix-grande"><thead><tr><th>Año</th>';
+  mesesCompletos.forEach(m => htmlG += `<th>${m}</th>`);
+  htmlG += '<th>Anual</th></tr></thead><tbody>';
+  anios.forEach(anio => {
+    let acumAnio = 1, tieneDatos = false;
+    meses.forEach((m, i) => {
+      const key = anio+'-'+(String(i+1).padStart(2,'0'));
+      if (rentMap[key] !== undefined) { acumAnio *= (1+rentMap[key]/100); tieneDatos = true; }
+    });
+    const rentAnioVal = tieneDatos ? (acumAnio-1)*100 : null;
+    const posAnio = !rentAnioVal || rentAnioVal >= 0;
+    htmlG += `<tr><td>${anio}</td>`;
+    meses.forEach((m, i) => {
+      const key = anio+'-'+(String(i+1).padStart(2,'0'));
+      const r = rentMap[key];
+      const esMes = key === mesActual;
+      if (r !== undefined) {
+        const pos = r >= 0;
+        htmlG += `<td class="${pos?'pos':'neg'}"${esMes?' style="background:rgba(22,163,74,0.08)"':''}>${fs(r,2)}%</td>`;
+      } else {
+        htmlG += `<td class="vacio">—</td>`;
+      }
+    });
+    htmlG += `<td class="anual ${posAnio?'pos':'neg'}">${rentAnioVal!==null?fs(rentAnioVal,2)+'%':'—'}</td></tr>`;
+  });
+  htmlG += '</tbody></table>';
+  const grande = document.getElementById('rent-matriz-grande');
+  if (grande) grande.innerHTML = htmlG;
 }
 
 // ── RENDER HISTORIAL ──
@@ -619,6 +682,9 @@ function guardarPrecios() {
   if (fecha) c.ultimaActualizacion = fecha;
   renderAll();
   closeOverlay('overlay-actualizar');
+  autoguardar();
+  setStatus('✅ Precios guardados · '+new Date().toISOString().slice(0,10), true);
+  setTimeout(() => setStatus('', null), 3000);
 }
 
 function openAportacion() {
@@ -771,7 +837,7 @@ function setStatus(msg, ok) {
 
 async function fetchPrecio(symbol) {
   try {
-    const r = await fetch('/.netlify/functions/precio?symbol=' + encodeURIComponent(symbol), {cache:'no-store'});
+    const r = await fetch('https://precio-accion.jaumetorresros.workers.dev/?symbol=' + encodeURIComponent(symbol), {cache:'no-store'});
     if (r.ok) {
       const d = await r.json();
       if (d.price && d.price > 0) return d.price;
@@ -806,9 +872,12 @@ async function actualizarPreciosAuto() {
 
 // ── BIND EVENTS ──
 function bindEvents() {
-  document.getElementById('btn-auto').addEventListener('click', actualizarPreciosAuto);
+  document.getElementById('btn-actualizar').addEventListener('click', openActualizar);
   document.getElementById('btn-aportacion').addEventListener('click', openAportacion);
   document.getElementById('btn-snapshot').addEventListener('click', guardarSnapshot);
+  document.getElementById('btn-expand-rent').addEventListener('click', ()=>document.getElementById('overlay-rent').classList.add('open'));
+  document.getElementById('btn-cerrar-rent').addEventListener('click', ()=>document.getElementById('overlay-rent').classList.remove('open'));
+  document.getElementById('overlay-rent').addEventListener('click', e=>{ if(e.target===document.getElementById('overlay-rent')) document.getElementById('overlay-rent').classList.remove('open'); });
   document.getElementById('btn-guardar-precios').addEventListener('click', guardarPrecios);
   document.getElementById('btn-cancelar-actualizar').addEventListener('click', ()=>closeOverlay('overlay-actualizar'));
   document.getElementById('btn-confirmar-op').addEventListener('click', ejecutarOperacion);
@@ -856,7 +925,31 @@ function borrarMovimiento(idx) {
 renderAll();
 bindEvents();
 state.carteras.forEach(c => c.ultimaActualizacion = new Date().toISOString().slice(0,10));
-actualizarPreciosAuto();
+
+// Auto-snapshot el primer día de cada mes
+(function autoSnapshotMensual() {
+  const hoy = new Date();
+  const esPrimerDia = hoy.getDate() === 1;
+  if (!esPrimerDia) return;
+  const mesHoy = hoy.toISOString().slice(0,7);
+  // Guardar snapshot de cada cartera si no existe ya para este mes
+  let guardado = false;
+  state.carteras.forEach(c => {
+    const yaExiste = c.historial.find(h => h.fecha.slice(0,7) === mesHoy);
+    if (!yaExiste && c.posiciones.length > 0) {
+      const {coste, act, benef, pct} = calcTotales(c);
+      const fecha = hoy.toISOString().slice(0,10);
+      c.historial.push({fecha, coste, valor:act, benef, pct});
+      guardado = true;
+    }
+  });
+  if (guardado) {
+    renderAll();
+    autoguardar();
+    setStatus('📅 Rentabilidad mensual guardada automáticamente', true);
+    setTimeout(() => setStatus('', null), 4000);
+  }
+})();
 </script>
 
 <script>
